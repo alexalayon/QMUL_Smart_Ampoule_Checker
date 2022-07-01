@@ -4,6 +4,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:keepScreenOn="true"
     tools:context=".CameraActivity">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/camera_previewView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
