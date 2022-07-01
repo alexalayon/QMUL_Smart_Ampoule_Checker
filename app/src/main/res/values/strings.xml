@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Smart Ampoule Checker</string>
+    <string name="asset_model_file_name" translatable="false">ampoule_model.tflite</string>
 </resources>
