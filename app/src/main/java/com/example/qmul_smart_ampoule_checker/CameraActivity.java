@@ -1,7 +1,6 @@
 package com.example.qmul_smart_ampoule_checker;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
@@ -11,22 +10,26 @@ import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.MutableLiveData;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.widget.Toast;
 
 import com.example.qmul_smart_ampoule_checker.ImageProcess.ImageProcessor;
 import com.example.qmul_smart_ampoule_checker.ImageProcess.ObjectProcessor;
+import com.example.qmul_smart_ampoule_checker.ImageProcess.TextProcessor;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.common.MlKitException;
 import com.google.mlkit.common.model.LocalModel;
-import com.google.mlkit.vision.objects.ObjectDetectorOptionsBase;
 import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 public class CameraActivity extends AppCompatActivity {
 
     private static final int MAX_OBJECT_LABEL_COUNT = 1;
+    private static final String OBJECT_CLASSIFICATION_MODEL_FILE = "ampoule_model.tflite";
+    private static final String OBJECT_CLASSIFICATION_LABEL_FILE = "labels.txt";
+
     private PreviewView cameraView;
     @Nullable
     private ProcessCameraProvider cameraProvider;
@@ -51,6 +54,8 @@ public class CameraActivity extends AppCompatActivity {
         cameraView = findViewById(R.id.camera_previewView);
         cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
         startCameraLiveData();
+
+
     }
 
     @Override
@@ -97,6 +102,23 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
+    private String[] getModelLabels(InputStream is) {
+        try {
+            String[] labels = new String[1];
+            byte[] buffer = new byte[is.available()];
+            int input_stream_string = is.read(buffer);
+            is.close();
+            String content = new String(buffer);
+            if (content != null && content != "") {
+                labels = content.split("\n");
+            }
+
+            return labels;
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
     private void bindCamera() {
         if (cameraProvider != null) {
             cameraProvider.unbindAll();
@@ -119,11 +141,60 @@ public class CameraActivity extends AppCompatActivity {
             imageProcessor.stop();
         }
 
-        LocalModel localModel = new LocalModel.Builder().setAssetFilePath(String.valueOf(R.string.asset_model_file_name)).build();
-        CustomObjectDetectorOptions.Builder objectDetectorBuilder = new CustomObjectDetectorOptions.Builder(localModel).setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE);
-        objectDetectorBuilder.enableClassification().setMaxPerObjectLabelCount(MAX_OBJECT_LABEL_COUNT);
-        objectDetectorOptions = objectDetectorBuilder.build();
+        try {
+            LocalModel localModel = new LocalModel.Builder().setAssetFilePath(OBJECT_CLASSIFICATION_MODEL_FILE).build();
+            CustomObjectDetectorOptions.Builder objectDetectorBuilder = new CustomObjectDetectorOptions.Builder(localModel).setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE);
+            objectDetectorBuilder.enableClassification().setMaxPerObjectLabelCount(MAX_OBJECT_LABEL_COUNT);
+            objectDetectorOptions = objectDetectorBuilder.build();
 
-        imageProcessor = new ObjectProcessor(this, objectDetectorOptions);
+            InputStream inputStream = getAssets().open(OBJECT_CLASSIFICATION_LABEL_FILE);
+            String[] labels = getModelLabels(inputStream);
+
+            imageProcessor = new ObjectProcessor(this, objectDetectorOptions, labels);
+        } catch (Exception ex) {
+            Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+
+        imageAnalysisProcess = new ImageAnalysis.Builder().build();
+        imageAnalysisProcess.setAnalyzer(ContextCompat.getMainExecutor(this), imageProxy -> {
+            try {
+                imageProcessor.processImageProxy(imageProxy);
+                if (imageProcessor.hasAmpouleDetected()) {
+                    imageProcessor.stop();
+
+                    bindTextRecognition();
+                }
+            } catch (MlKitException ex) {
+                Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        cameraProvider.bindToLifecycle(this, cameraSelector, imageAnalysisProcess);
+    }
+
+    private void bindTextRecognition() {
+        if (imageAnalysisProcess != null) {
+            cameraProvider.unbind(imageAnalysisProcess);
+        }
+        if (imageProcessor != null) {
+            imageProcessor.stop();
+        }
+
+        try {
+
+        } catch (Exception ex) {
+            Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+
+        imageAnalysisProcess = new ImageAnalysis.Builder().build();
+        imageAnalysisProcess.setAnalyzer(ContextCompat.getMainExecutor(this), imageProxy -> {
+            try {
+                imageProcessor.processImageProxy(imageProxy);
+            } catch (MlKitException ex) {
+                Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        cameraProvider.bindToLifecycle(this, cameraSelector, imageAnalysisProcess);
     }
 }
