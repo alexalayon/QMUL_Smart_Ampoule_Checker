@@ -19,16 +19,24 @@ import com.example.qmul_smart_ampoule_checker.ImageProcess.TextProcessor;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.common.MlKitException;
 import com.google.mlkit.common.model.LocalModel;
+import com.google.mlkit.vision.objects.DetectedObject;
 import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+
+import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 
 public class CameraActivity extends AppCompatActivity {
 
     private static final int MAX_OBJECT_LABEL_COUNT = 1;
     private static final String OBJECT_CLASSIFICATION_MODEL_FILE = "ampoule_model.tflite";
     private static final String OBJECT_CLASSIFICATION_LABEL_FILE = "labels.txt";
+
+    private boolean objectDetected = false;
+    private boolean textDetected = false;
 
     private PreviewView cameraView;
     @Nullable
@@ -54,8 +62,6 @@ public class CameraActivity extends AppCompatActivity {
         cameraView = findViewById(R.id.camera_previewView);
         cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
         startCameraLiveData();
-
-
     }
 
     @Override
@@ -69,7 +75,6 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        bindCamera();
     }
 
     @Override
@@ -94,7 +99,6 @@ public class CameraActivity extends AppCompatActivity {
                         bindCamera();
                     });
                 } catch (Exception ex) {
-
                 }
             }, ContextCompat.getMainExecutor(getApplication()));
         } catch (Exception ex) {
@@ -159,10 +163,12 @@ public class CameraActivity extends AppCompatActivity {
         imageAnalysisProcess.setAnalyzer(ContextCompat.getMainExecutor(this), imageProxy -> {
             try {
                 imageProcessor.processImageProxy(imageProxy);
-                if (imageProcessor.hasAmpouleDetected()) {
+                if (ObjectProcessor.hasAmpouleDetected()) {
                     imageProcessor.stop();
 
-                    bindTextRecognition();
+                    Toast.makeText(this, "Ampoule Found", Toast.LENGTH_SHORT).show();
+
+                    bindTextRecognition(ObjectProcessor.getResults());
                 }
             } catch (MlKitException ex) {
                 Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
@@ -172,7 +178,7 @@ public class CameraActivity extends AppCompatActivity {
         cameraProvider.bindToLifecycle(this, cameraSelector, imageAnalysisProcess);
     }
 
-    private void bindTextRecognition() {
+    private void bindTextRecognition(List<DetectedObject> objectResults) {
         if (imageAnalysisProcess != null) {
             cameraProvider.unbind(imageAnalysisProcess);
         }
@@ -181,15 +187,21 @@ public class CameraActivity extends AppCompatActivity {
         }
 
         try {
-
+            imageProcessor = new TextProcessor(this, new TextRecognizerOptions.Builder().build(), objectResults);
         } catch (Exception ex) {
             Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+            return;
         }
 
         imageAnalysisProcess = new ImageAnalysis.Builder().build();
         imageAnalysisProcess.setAnalyzer(ContextCompat.getMainExecutor(this), imageProxy -> {
             try {
                 imageProcessor.processImageProxy(imageProxy);
+//                if (TextProcessor.hasReadAllValues()) {
+//                    imageProcessor.stop();
+//
+//                    Toast.makeText(this, TextProcessor.getAmpouleLabelRelevantText(), Toast.LENGTH_SHORT).show();
+//                }
             } catch (MlKitException ex) {
                 Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
             }

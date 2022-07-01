@@ -9,6 +9,4 @@ public interface ImageProcessor {
     void processImageProxy(ImageProxy imageProxy) throws MlKitException;
 
     void stop();
-
-    boolean hasAmpouleDetected();
 }

@@ -1,6 +1,5 @@
 package com.example.qmul_smart_ampoule_checker.ImageProcess;
 
-import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 
@@ -65,7 +64,4 @@ public abstract class ProcessorBase<T> implements ImageProcessor {
     protected abstract void onSuccess(@NonNull T results);
 
     protected abstract void onFailure(@NonNull Exception e);
-
-    @Override
-    public abstract boolean hasAmpouleDetected();
 }

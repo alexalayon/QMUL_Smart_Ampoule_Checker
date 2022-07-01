@@ -21,7 +21,9 @@ public class ObjectProcessor extends ProcessorBase<List<DetectedObject>> {
 
     private static int no_ampoule_label_index;
     private static int ampoule_label_index;
-    private boolean ampoule_detected = false;
+
+    private static boolean ampoule_detected = false;
+    private static List<DetectedObject> objectDetectedResults;
 
     public ObjectProcessor(Context context, ObjectDetectorOptionsBase options, String[] labels) {
         super(context);
@@ -31,6 +33,8 @@ public class ObjectProcessor extends ProcessorBase<List<DetectedObject>> {
             no_ampoule_label_index = Integer.parseInt(labels[0].substring(0, labels[0].indexOf(" ")));
             ampoule_label_index = Integer.parseInt(labels[1].substring(0, labels[1].indexOf(" ")));
         }
+
+        ampoule_detected = false;
     }
 
     protected Task<List<DetectedObject>> detectInImage(InputImage image) {
@@ -49,6 +53,7 @@ public class ObjectProcessor extends ProcessorBase<List<DetectedObject>> {
             for (DetectedObject.Label label : results.get(0).getLabels()) {
                 if (label.getIndex() == ampoule_label_index && label.getConfidence() > CONFIDENTIALITY_THRESHOLD) {
                     ampoule_detected = true;
+                    objectDetectedResults = results;
                 }
             }
         }
@@ -58,8 +63,11 @@ public class ObjectProcessor extends ProcessorBase<List<DetectedObject>> {
     protected void onFailure(@NonNull Exception e) {
     }
 
-    @Override
-    public boolean hasAmpouleDetected() {
+    public static boolean hasAmpouleDetected() {
         return ampoule_detected;
+    }
+
+    public static List<DetectedObject> getResults() {
+        return  objectDetectedResults;
     }
 }
