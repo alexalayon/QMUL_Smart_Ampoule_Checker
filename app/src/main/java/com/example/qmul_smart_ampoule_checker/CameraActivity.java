@@ -75,6 +75,11 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (imageProcessor != null) {
+            imageProcessor.stop();
+        }
+
+        bindCamera();
     }
 
     @Override
