@@ -171,8 +171,6 @@ public class CameraActivity extends AppCompatActivity {
                 if (ObjectProcessor.hasAmpouleDetected()) {
                     imageProcessor.stop();
 
-                    Toast.makeText(this, "Ampoule Found", Toast.LENGTH_SHORT).show();
-
                     bindTextRecognition(ObjectProcessor.getResults());
                 }
             } catch (MlKitException ex) {
@@ -202,11 +200,11 @@ public class CameraActivity extends AppCompatActivity {
         imageAnalysisProcess.setAnalyzer(ContextCompat.getMainExecutor(this), imageProxy -> {
             try {
                 imageProcessor.processImageProxy(imageProxy);
-//                if (TextProcessor.hasReadAllValues()) {
-//                    imageProcessor.stop();
-//
-//                    Toast.makeText(this, TextProcessor.getAmpouleLabelRelevantText(), Toast.LENGTH_SHORT).show();
-//                }
+                if (TextProcessor.hasReadAllValues()) {
+                    imageProcessor.stop();
+
+                    Toast.makeText(this, TextProcessor.getAmpouleLabelRelevantText(), Toast.LENGTH_SHORT).show();
+                }
             } catch (MlKitException ex) {
                 Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
             }
