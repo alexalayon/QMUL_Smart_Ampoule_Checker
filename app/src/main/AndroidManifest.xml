@@ -3,12 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.qmul_smart_ampoule_checker">
 
-    <uses-sdk
-        tools:overrideLibrary="
-          androidx.camera.camera2, androidx.camera.core,
-          androidx.camera.view, androidx.camera.lifecycle" />
+    <uses-sdk tools:overrideLibrary="           androidx.camera.camera2, androidx.camera.core,           androidx.camera.view, androidx.camera.lifecycle" />
 
-    <uses-feature android:name="android.hardware.camera"/>
+    <uses-feature android:name="android.hardware.camera" />
 
     <uses-permission android:name="android.permission.CAMERA" />
 

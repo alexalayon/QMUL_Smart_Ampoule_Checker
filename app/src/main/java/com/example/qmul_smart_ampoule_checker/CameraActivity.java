@@ -1,7 +1,9 @@
 package com.example.qmul_smart_ampoule_checker;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDialogFragment;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.Preview;
@@ -10,7 +12,10 @@ import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.MutableLiveData;
 
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.widget.Toast;
 
 import com.example.qmul_smart_ampoule_checker.ImageProcess.ImageProcessor;
@@ -28,6 +33,7 @@ import org.w3c.dom.Text;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Locale;
 
 public class CameraActivity extends AppCompatActivity {
 
@@ -53,6 +59,7 @@ public class CameraActivity extends AppCompatActivity {
     private ImageProcessor imageProcessor;
 
     private CustomObjectDetectorOptions objectDetectorOptions;
+    private TextToSpeech textToSpeech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +68,16 @@ public class CameraActivity extends AppCompatActivity {
 
         cameraView = findViewById(R.id.camera_previewView);
         cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
+
+        textToSpeech = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    textToSpeech.setLanguage(Locale.ENGLISH);
+                }
+            }
+        });
+
         startCameraLiveData();
     }
 
@@ -171,6 +188,7 @@ public class CameraActivity extends AppCompatActivity {
                 if (ObjectProcessor.hasAmpouleDetected()) {
                     imageProcessor.stop();
 
+                    Toast.makeText(this, "Ampoule Found", Toast.LENGTH_SHORT).show();
                     bindTextRecognition(ObjectProcessor.getResults());
                 }
             } catch (MlKitException ex) {
@@ -203,7 +221,8 @@ public class CameraActivity extends AppCompatActivity {
                 if (TextProcessor.hasReadAllValues()) {
                     imageProcessor.stop();
 
-                    Toast.makeText(this, TextProcessor.getAmpouleLabelRelevantText(), Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(this, TextProcessor.getAmpouleLabelRelevantText(), Toast.LENGTH_SHORT).show();
+                    labelSetOutput(TextProcessor.getAmpouleLabelRelevantText());
                 }
             } catch (MlKitException ex) {
                 Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
@@ -211,5 +230,29 @@ public class CameraActivity extends AppCompatActivity {
         });
 
         cameraProvider.bindToLifecycle(this, cameraSelector, imageAnalysisProcess);
+    }
+
+    private void labelSetOutput(String labelText) {
+        if (imageProcessor != null) {
+            imageProcessor.stop();
+        }
+        if (imageAnalysisProcess != null) {
+            cameraProvider.unbind(imageAnalysisProcess);
+        }
+
+        textToSpeech.setPitch(0.8f);
+        textToSpeech.setSpeechRate(0.95f);
+        textToSpeech.speak(labelText, TextToSpeech.QUEUE_FLUSH, null);
+
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+        dialogBuilder.setTitle("Label data")
+                .setMessage(labelText)
+                .setPositiveButton("Next", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                        bindCamera();
+                    }
+                }).show();
     }
 }

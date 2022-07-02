@@ -135,82 +135,98 @@ public class TextProcessor extends ProcessorBase<Text> {
     }
 
     private String getAmpouleConcentrationWeight(String text) {
-        String number, measure;
-        if (text.toLowerCase().contains("mg")) {
-            number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("mg")).replaceAll(" ", "");
-            measure = "mg";
-        } else if (text.toLowerCase().contains("mcg")) {
-            number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("mcg")).replaceAll(" ", "");
-            measure = "mcg";
-        } else if (text.toLowerCase().contains("miligram")) {
-            number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("miligram")).replaceAll(" ", "");
-            measure = "mg";
-        } else if (text.toLowerCase().contains("microgram")) {
-            number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("microgram")).replaceAll(" ", "");
-            measure = "mcg";
-        } else {
+        try {
+            String number, measure;
+            if (text.toLowerCase().contains("mg")) {
+                number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("mg")).replaceAll(" ", "");
+                measure = "mg";
+            } else if (text.toLowerCase().contains("mcg")) {
+                number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("mcg")).replaceAll(" ", "");
+                measure = "mcg";
+            } else if (text.toLowerCase().contains("miligram")) {
+                number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("miligram")).replaceAll(" ", "");
+                measure = "mg";
+            } else if (text.toLowerCase().contains("microgram")) {
+                number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("microgram")).replaceAll(" ", "");
+                measure = "mcg";
+            } else {
+                return "";
+            }
+
+            number = substringFirstDigit(number);
+            return number + measure;
+        } catch (Exception e) {
             return "";
         }
-
-        number = substringFirstDigit(number);
-        return number + measure;
     }
 
     private String getAmpouleConcentrationVolume(String text) {
-        String number;
-        if (text.toLowerCase().contains("ml")) {
-            number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("ml")).replaceAll(" ", "");
-        } else if (text.toLowerCase().contains("mililiter")) {
-            number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("mililiter")).replaceAll(" ", "");
-        } else {
+        try {
+            String number;
+            if (text.toLowerCase().contains("ml")) {
+                number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("ml")).replaceAll(" ", "");
+            } else if (text.toLowerCase().contains("mililiter")) {
+                number = text.toLowerCase().substring(0, text.toLowerCase().indexOf("mililiter")).replaceAll(" ", "");
+            } else {
+                return "";
+            }
+
+            if (number.contains(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""))) {
+                number = number.substring(number.indexOf(ampouleConcentrationWeight.substring(0))).replace(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""), "");
+            }
+
+            number = substringFirstDigit(number);
+            if (number.length() == 0) {
+                number = "1";
+            }
+            return number + "ml";
+        } catch (Exception e) {
             return "";
         }
-
-        if (number.contains(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""))) {
-            number = number.substring(number.indexOf(ampouleConcentrationWeight.substring(0))).replace(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""), "");
-        }
-
-        number = substringFirstDigit(number);
-        if (number.length() == 0) {
-            number = "1";
-        }
-        return number + "ml";
     }
 
     private String getAmpouleExpiryDate(String text) {
-        String date = "";
-        text = text.replaceAll("/", "-").replaceAll(" ", "-");
-        if (text.toLowerCase().startsWith("exp") || text.toLowerCase().startsWith("date")
-                || text.contains("-")) {
-            if ((text.startsWith("0") || text.startsWith("1"))
-                    && text.substring(text.indexOf("-")+1).startsWith("20")
-                    && (text.length() == 5 || text.length() == 7)) {
-                date = substringFirstDigit(text);
+        try {
+            String date = "";
+            text = text.replaceAll("/", "-").replaceAll(" ", "-");
+            if (text.toLowerCase().startsWith("exp") || text.toLowerCase().startsWith("date")
+                    || text.contains("-")) {
+                if ((text.startsWith("0") || text.startsWith("1"))
+                        && text.substring(text.indexOf("-") + 1).startsWith("20")
+                        && (text.length() == 5 || text.length() == 7)) {
+                    date = substringFirstDigit(text);
+                }
             }
-        }
 
-        date = date.replaceAll("-", " ");
-        return date;
+            date = date.replaceAll("-", " ");
+            return date;
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private String getAmpouleName(TextBlock block) {
-        String name = "";
-        int maxHeigth = 0, maxWidth = 0;
-        for (Line line:block.getLines()) {
-            if (line.getText().contains(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""))
-                    || line.getText().toLowerCase().contains("solution")
-                    || line.getText().toLowerCase().contains("inject")
-            ) {
-                continue;
-            }
+        try {
+            String name = "";
+            int maxHeigth = 0, maxWidth = 0;
+            for (Line line : block.getLines()) {
+                if (line.getText().contains(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""))
+                        || line.getText().toLowerCase().contains("solution")
+                        || line.getText().toLowerCase().contains("inject")
+                        || line.getText().toLowerCase().contains("for")) {
+                    continue;
+                }
 
-            if (maxHeigth < line.getBoundingBox().height() && maxWidth < line.getBoundingBox().width()){
-                maxHeigth = line.getBoundingBox().height();
-                maxWidth = line.getBoundingBox().width();
-                name = line.getText();
+                if (maxHeigth < line.getBoundingBox().height() && maxWidth < line.getBoundingBox().width()) {
+                    maxHeigth = line.getBoundingBox().height();
+                    maxWidth = line.getBoundingBox().width();
+                    name = line.getText();
+                }
             }
+            return name;
+        } catch (Exception e) {
+            return "";
         }
-        return name;
     }
 
     private String substringFirstDigit(String text) {
