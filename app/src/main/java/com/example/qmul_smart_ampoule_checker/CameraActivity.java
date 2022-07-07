@@ -1,19 +1,27 @@
 package com.example.qmul_smart_ampoule_checker;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDialogFragment;
+import androidx.camera.core.CameraControl;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.DisplayOrientedMeteringPointFactory;
+import androidx.camera.core.FocusMeteringAction;
 import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.MeteringPoint;
+import androidx.camera.core.MeteringPointFactory;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.MutableLiveData;
 
+import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.PointF;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.widget.Toast;
@@ -40,9 +48,6 @@ public class CameraActivity extends AppCompatActivity {
     private static final int MAX_OBJECT_LABEL_COUNT = 1;
     private static final String OBJECT_CLASSIFICATION_MODEL_FILE = "ampoule_model.tflite";
     private static final String OBJECT_CLASSIFICATION_LABEL_FILE = "labels.txt";
-
-    private boolean objectDetected = false;
-    private boolean textDetected = false;
 
     private PreviewView cameraView;
     @Nullable
@@ -181,6 +186,8 @@ public class CameraActivity extends AppCompatActivity {
             Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
         }
 
+        Toast.makeText(this, "Start Ampoule detection", Toast.LENGTH_SHORT).show();
+
         imageAnalysisProcess = new ImageAnalysis.Builder().build();
         imageAnalysisProcess.setAnalyzer(ContextCompat.getMainExecutor(this), imageProxy -> {
             try {
@@ -221,7 +228,14 @@ public class CameraActivity extends AppCompatActivity {
                 if (TextProcessor.hasReadAllValues()) {
                     imageProcessor.stop();
 
-                    //Toast.makeText(this, TextProcessor.getAmpouleLabelRelevantText(), Toast.LENGTH_SHORT).show();
+                    labelSetOutput(TextProcessor.getAmpouleLabelRelevantText());
+                } else if (TextProcessor.getTextNotDetectedFlag()) {
+                    imageProcessor.stop();
+                    Toast.makeText(this, "Text not detected", Toast.LENGTH_SHORT).show();
+                    bindDetectionProcess();
+                } else if (TextProcessor.getTextDataIncompleteFlag()) {
+                    imageProcessor.stop();
+                    Toast.makeText(this, "The data is incomplete", Toast.LENGTH_SHORT).show();
                     labelSetOutput(TextProcessor.getAmpouleLabelRelevantText());
                 }
             } catch (MlKitException ex) {
@@ -247,6 +261,7 @@ public class CameraActivity extends AppCompatActivity {
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
         dialogBuilder.setTitle("Label data")
                 .setMessage(labelText)
+                .setCancelable(false)
                 .setPositiveButton("Next", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {

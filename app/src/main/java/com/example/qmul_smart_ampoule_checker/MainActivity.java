@@ -24,7 +24,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         startButton = findViewById(R.id.Start_button);
-        settingsButton = findViewById(R.id.Settings_button);
 
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override

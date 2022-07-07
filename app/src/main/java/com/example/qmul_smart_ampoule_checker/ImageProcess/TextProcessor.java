@@ -15,13 +15,12 @@ import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.TextRecognizerOptionsInterface;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Locale;
 
 public class TextProcessor extends ProcessorBase<Text> {
 
     private static final int IMAGE_BOUNDARY_THRESHOLD = 200;
+    private static final int READING_COUNTER_MARGIN = 50;
 
     private final TextRecognizer textRecognizer;
 
@@ -32,13 +31,20 @@ public class TextProcessor extends ProcessorBase<Text> {
     private boolean ampouleConcentrationVolumeCheck = false;
     private boolean ampouleExpiryDateCheck = false;
 
+    private int maxHeight;
+    private int maxWidth;
+
     private String ampouleName = "";
     private String ampouleConcentrationWeight;
     private String ampouleConcentrationVolume;
     private String ampouleExpiryDate = "";
 
+    private int reading_counter = 0;
+
     public static boolean hasReadAllRelevantText;
     private static String ampouleLabelRelevantText;
+    private static boolean textNotDetectedFlag;
+    private static boolean dataIncompleteFlat;
 
     public TextProcessor(Context context, TextRecognizerOptionsInterface textRecognizerOptionsInterface, @Nullable List<DetectedObject> ampouleResults) {
         super(context);
@@ -47,6 +53,10 @@ public class TextProcessor extends ProcessorBase<Text> {
 
         ampouleLabelRelevantText = "";
         hasReadAllRelevantText = false;
+        textNotDetectedFlag = false;
+        dataIncompleteFlat = false;
+        maxWidth = 0;
+        maxHeight = 0;
     }
 
     @Override
@@ -66,13 +76,50 @@ public class TextProcessor extends ProcessorBase<Text> {
             FilterText(results);
         }
 
+        reading_counter++;
         if (ampouleConcentrationWeightCheck && ampouleConcentrationVolumeCheck
                 && ampouleExpiryDateCheck && ampouleNameCheck) {
             ampouleLabelRelevantText = ampouleName + "\n"
             + ampouleConcentrationWeight + " in " + ampouleConcentrationVolume + "\n"
             + "Expiry Date: " + ampouleExpiryDate;
             hasReadAllRelevantText = true;
+        } else if (reading_counter >= READING_COUNTER_MARGIN) {
+            if (ampouleNameCheck || ampouleExpiryDateCheck || ampouleConcentrationWeightCheck || ampouleConcentrationWeightCheck) {
+                ampouleLabelRelevantText = extractData();
+                dataIncompleteFlat = true;
+            } else {
+                textNotDetectedFlag = true;
+            }
         }
+    }
+
+    private String extractData() {
+        String data = "";
+        if (ampouleNameCheck) {
+            data += ampouleName + "\n";
+        } else {
+            data += "Name not found\n";
+        }
+
+        if (ampouleConcentrationWeightCheck) {
+            data += ampouleConcentrationWeight + " in ";
+        } else {
+            data += "Weight not found, ";
+        }
+
+        if (ampouleConcentrationVolumeCheck) {
+            data += ampouleConcentrationVolume + "\n";
+        } else {
+            data += "Volume not found\n";
+        }
+
+        if (ampouleExpiryDateCheck) {
+            data += "Expiry Date: " + ampouleExpiryDate;
+        } else {
+            data += "Expiry Date: not found";
+        }
+
+        return data;
     }
 
     @Override
@@ -81,55 +128,61 @@ public class TextProcessor extends ProcessorBase<Text> {
     }
 
     private void FilterText(@NonNull Text results) {
+        boolean concentrationFound = false;
         for (TextBlock block : results.getTextBlocks()) {
             if (textInsideAmpouleBoundary(block)) {
-                boolean concentrationFound = false;
                 for (Line line : block.getLines()) {
-                    String ampouleWeight =getAmpouleConcentrationWeight(line.getText());
+                    String ampouleWeight = getAmpouleConcentrationWeight(line.getText());
                     if (ampouleWeight != "") {
                         if (!ampouleConcentrationWeightCheck) {
                             ampouleConcentrationWeight = ampouleWeight;
                             ampouleConcentrationWeightCheck = true;
+                            reading_counter = 0;
                         }
                         concentrationFound = true;
                     }
 
-                    if (!ampouleConcentrationVolumeCheck) {
-                        String ampouleVolume = getAmpouleConcentrationVolume(line.getText());
-                        if (ampouleVolume != "") {
+                    String ampouleVolume = getAmpouleConcentrationVolume(line.getText());
+                    if (ampouleVolume != "") {
+                        if (!ampouleConcentrationVolumeCheck) {
                             ampouleConcentrationVolume = ampouleVolume;
                             ampouleConcentrationVolumeCheck = true;
+                            reading_counter = 0;
                         }
+                        concentrationFound = true;
                     }
 
-                    if (!ampouleExpiryDateCheck) {
-                        String ampouleDate = getAmpouleExpiryDate(line.getText());
-                        if (ampouleDate != "") {
-                            ampouleExpiryDate = ampouleDate;
-                            ampouleExpiryDateCheck = true;
-                        }
+                    String ampouleDate = getAmpouleExpiryDate(line.getText());
+                    if (ampouleDate != "" && !ampouleExpiryDateCheck) {
+                        ampouleExpiryDate = ampouleDate;
+                        ampouleExpiryDateCheck = true;
+                        reading_counter = 0;
                     }
                 }
+            }
+        }
 
-                if (concentrationFound && !ampouleNameCheck) {
-                    String name = getAmpouleName(block);
-                    if (name != "") {
-                        ampouleName = name;
-                        ampouleNameCheck = true;
-                    }
-                }
+        if (concentrationFound) {
+            String name = getAmpouleName(results);
+            if (name != "") {
+                ampouleName = name;
+                ampouleNameCheck = true;
+                reading_counter = 0;
             }
         }
     }
 
     private boolean textInsideAmpouleBoundary(TextBlock block) {
-        if (block.getBoundingBox().top > (ampouleDetectionResults.get(0).getBoundingBox().top - IMAGE_BOUNDARY_THRESHOLD)
-                && block.getBoundingBox().bottom < (ampouleDetectionResults.get(0).getBoundingBox().bottom + IMAGE_BOUNDARY_THRESHOLD)
-                && block.getBoundingBox().left > (ampouleDetectionResults.get(0).getBoundingBox().left - IMAGE_BOUNDARY_THRESHOLD)
-                && block.getBoundingBox().right < (ampouleDetectionResults.get(0).getBoundingBox().right + IMAGE_BOUNDARY_THRESHOLD)) {
-            return true;
-        }
-        else {
+        try {
+            if (block.getBoundingBox().top > (ampouleDetectionResults.get(0).getBoundingBox().top - IMAGE_BOUNDARY_THRESHOLD)
+                    && block.getBoundingBox().bottom < (ampouleDetectionResults.get(0).getBoundingBox().bottom + IMAGE_BOUNDARY_THRESHOLD)
+                    && block.getBoundingBox().left > (ampouleDetectionResults.get(0).getBoundingBox().left - IMAGE_BOUNDARY_THRESHOLD)
+                    && block.getBoundingBox().right < (ampouleDetectionResults.get(0).getBoundingBox().right + IMAGE_BOUNDARY_THRESHOLD)) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch (Exception e) {
             return false;
         }
     }
@@ -153,7 +206,10 @@ public class TextProcessor extends ProcessorBase<Text> {
                 return "";
             }
 
-            number = substringFirstDigit(number);
+            number = substringFirstDigit(number, 0);
+            if (Float.parseFloat(number) == 0.0f){
+                return "";
+            }
             return number + measure;
         } catch (Exception e) {
             return "";
@@ -171,13 +227,21 @@ public class TextProcessor extends ProcessorBase<Text> {
                 return "";
             }
 
-            if (number.contains(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""))) {
-                number = number.substring(number.indexOf(ampouleConcentrationWeight.substring(0))).replace(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""), "");
+            if (number.contains("mg") || number.contains("mcg") || number.contains("gram")) {
+                number = substringFirstDigit(number, number.indexOf("m"));
             }
 
-            number = substringFirstDigit(number);
+            number = substringFirstDigit(number, 0);
             if (number.length() == 0) {
                 number = "1";
+            }
+
+            if (ampouleConcentrationWeightCheck && ampouleConcentrationWeight.contains(number) && number != "1") {
+                return "";
+            }
+
+            if (Float.parseFloat(number) == 0.0f) {
+                return "";
             }
             return number + "ml";
         } catch (Exception e) {
@@ -191,36 +255,53 @@ public class TextProcessor extends ProcessorBase<Text> {
             text = text.replaceAll("/", "-").replaceAll(" ", "-");
             if (text.toLowerCase().startsWith("exp") || text.toLowerCase().startsWith("date")
                     || text.contains("-")) {
+                text = substringFirstDigit(text, 0);
                 if ((text.startsWith("0") || text.startsWith("1"))
                         && text.substring(text.indexOf("-") + 1).startsWith("20")
-                        && (text.length() == 5 || text.length() == 7)) {
-                    date = substringFirstDigit(text);
+                        && (text.length() == 5 || text.length() == 7)
+                        && text.matches("[\\d-]+")) {
+                    date = substringFirstDigit(text, 0);
                 }
             }
 
             date = date.replaceAll("-", " ");
-            return date;
+            return getDate(date);
         } catch (Exception e) {
             return "";
         }
     }
 
-    private String getAmpouleName(TextBlock block) {
+    private String getAmpouleName(Text result) {
         try {
             String name = "";
-            int maxHeigth = 0, maxWidth = 0;
-            for (Line line : block.getLines()) {
-                if (line.getText().contains(ampouleConcentrationWeight.replaceAll("[^0-9.]", ""))
-                        || line.getText().toLowerCase().contains("solution")
-                        || line.getText().toLowerCase().contains("inject")
-                        || line.getText().toLowerCase().contains("for")) {
-                    continue;
-                }
+            for (TextBlock block : result.getTextBlocks()) {
+                for (Line line : block.getLines()) {
+                    if (line.getText().toLowerCase().contains("mcg") || line.getText().toLowerCase().contains("mg") || line.getText().toLowerCase().contains("gram")
+                            || line.getText().toLowerCase().contains("ml") || line.getText().toLowerCase().contains("liter")
+                            || line.getText().toLowerCase().contains("tion")
+                            || line.getText().toLowerCase().contains("solu")
+                            || line.getText().toLowerCase().contains("injec")
+                            || line.getText().toLowerCase().contains("for")
+                            || line.getText().toLowerCase().contains("contain")) {
+                        continue;
+                    }
 
-                if (maxHeigth < line.getBoundingBox().height() && maxWidth < line.getBoundingBox().width()) {
-                    maxHeigth = line.getBoundingBox().height();
-                    maxWidth = line.getBoundingBox().width();
-                    name = line.getText();
+                    if (maxHeight < line.getBoundingBox().height() && maxWidth < line.getBoundingBox().width()) {
+                        String[] nameTrim = line.getText().split(" ");
+                        boolean correctName = true;
+                        for (String nameWord : nameTrim) {
+                            if (nameWord.length() <= 5 || !Character.isUpperCase(nameWord.charAt(0)) || !checkLowerCase(nameWord)) {
+                                correctName = false;
+                                break;
+                            }
+                        }
+
+                        if (correctName && line.getText().replaceAll(" ", "").matches("[A-Za-z]+")) {
+                            maxHeight = line.getBoundingBox().height();
+                            maxWidth = line.getBoundingBox().width();
+                            name = line.getText();
+                        }
+                    }
                 }
             }
             return name;
@@ -229,15 +310,50 @@ public class TextProcessor extends ProcessorBase<Text> {
         }
     }
 
-    private String substringFirstDigit(String text) {
-        String s = "";
-        for (int i = 0; i<text.length(); i++) {
-            if (Character.isDigit(text.charAt(i))) {
-                s = text.substring(i);
+    private String getDate(String date) {
+        String new_date = "";
+        switch (date.substring(0, date.indexOf(" "))) {
+            case "01": new_date = "January"; break;
+            case "02": new_date = "February";break;
+            case "03": new_date = "March";break;
+            case "04": new_date = "April";break;
+            case "05": new_date = "May";break;
+            case "06": new_date = "June";break;
+            case "07": new_date = "July";break;
+            case "08": new_date = "August";break;
+            case "09": new_date = "September";break;
+            case "10": new_date = "October";break;
+            case "11": new_date = "November";break;
+            case "12": new_date = "December";break;
+            default: return "";
+        }
+        new_date += date.substring(date.indexOf(" "));
+        return new_date;
+    }
+
+    private boolean checkLowerCase (String text) {
+        boolean is_lowercase = true;
+        for (int i = 1; i < text.length(); i++) {
+            if (Character.isUpperCase(text.charAt(i))) {
+                is_lowercase = false;
                 break;
             }
         }
-        return s;
+
+        return is_lowercase;
+    }
+
+    private String substringFirstDigit(String text, int index) {
+        try {
+            String s = "";
+            for (int i = index; i < text.length(); i++) {
+                if (Character.isDigit(text.charAt(i))) {
+                    s = text.substring(i);
+                    break;
+                }
+            }
+            return s;
+        } catch (Exception e) { return "";}
     }
 
     public static boolean hasReadAllValues() {
@@ -247,5 +363,14 @@ public class TextProcessor extends ProcessorBase<Text> {
     public static String getAmpouleLabelRelevantText() {
         return ampouleLabelRelevantText;
     }
+
+    public static boolean getTextNotDetectedFlag() {
+        return textNotDetectedFlag;
+    }
+
+    public static boolean getTextDataIncompleteFlag() {
+        return dataIncompleteFlat;
+    }
 }
+
 

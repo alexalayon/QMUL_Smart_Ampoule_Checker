@@ -15,7 +15,7 @@ import com.google.mlkit.vision.objects.ObjectDetectorOptionsBase;
 import java.util.List;
 
 public class ObjectProcessor extends ProcessorBase<List<DetectedObject>> {
-    private static final float CONFIDENTIALITY_THRESHOLD = 0.85f;
+    private static final float CONFIDENTIALITY_THRESHOLD = 0.8f;
 
     private final ObjectDetector objectDetector;
 
