@@ -1,27 +1,17 @@
 package com.example.qmul_smart_ampoule_checker;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDialogFragment;
-import androidx.camera.core.CameraControl;
 import androidx.camera.core.CameraSelector;
-import androidx.camera.core.DisplayOrientedMeteringPointFactory;
-import androidx.camera.core.FocusMeteringAction;
 import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.MeteringPoint;
-import androidx.camera.core.MeteringPointFactory;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.MutableLiveData;
 
-import android.annotation.SuppressLint;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.graphics.PointF;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.widget.Toast;
@@ -36,9 +26,6 @@ import com.google.mlkit.vision.objects.DetectedObject;
 import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
-import org.w3c.dom.Text;
-
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Locale;
@@ -110,6 +97,8 @@ public class CameraActivity extends AppCompatActivity {
         if (imageProcessor != null) {
             imageProcessor.stop();
         }
+
+        textToSpeech.shutdown();
     }
 
     private void startCameraLiveData() {
