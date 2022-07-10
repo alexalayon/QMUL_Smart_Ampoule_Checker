@@ -175,8 +175,6 @@ public class CameraActivity extends AppCompatActivity {
             Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
         }
 
-        Toast.makeText(this, "Start Ampoule detection", Toast.LENGTH_SHORT).show();
-
         imageAnalysisProcess = new ImageAnalysis.Builder().build();
         imageAnalysisProcess.setAnalyzer(ContextCompat.getMainExecutor(this), imageProxy -> {
             try {
@@ -243,8 +241,8 @@ public class CameraActivity extends AppCompatActivity {
             cameraProvider.unbind(imageAnalysisProcess);
         }
 
-        textToSpeech.setPitch(0.8f);
-        textToSpeech.setSpeechRate(0.95f);
+        textToSpeech.setPitch(1.0f);
+        textToSpeech.setSpeechRate(1.0f);
         textToSpeech.speak(labelText, TextToSpeech.QUEUE_FLUSH, null);
 
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
