@@ -13,12 +13,17 @@ import com.google.android.gms.tasks.TaskExecutors;
 import com.google.mlkit.common.MlKitException;
 import com.google.mlkit.vision.common.InputImage;
 
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class ProcessorBase<T> implements ImageProcessor {
 
     private boolean isShutdown;
+    private int framesPerSecond = 0;
+    private final Timer fpsTimer = new Timer();
+    private int frameProcessed = 0;
 
     @NonNull
     private final Executor executor;
@@ -26,6 +31,14 @@ public abstract class ProcessorBase<T> implements ImageProcessor {
 
     protected ProcessorBase(Context context) {
         executor = TaskExecutors.MAIN_THREAD;
+        fpsTimer.scheduleAtFixedRate(
+                new TimerTask() {
+                    @Override
+                    public void run() {
+                        framesPerSecond = frameProcessed;
+                        frameProcessed = 0;
+                    }
+                }, 0, 1000);
     }
 
     @Override
@@ -46,6 +59,8 @@ public abstract class ProcessorBase<T> implements ImageProcessor {
 
     private Task<T> setListener(Task<T> task, @Nullable final Bitmap imageBitmap) {
         return task.addOnSuccessListener(executor, results -> {
+            frameProcessed++;
+            int frame = framesPerSecond;
             ProcessorBase.this.onSuccess(results);
         }).addOnFailureListener(executor, e -> {
             ProcessorBase.this.onFailure(e);

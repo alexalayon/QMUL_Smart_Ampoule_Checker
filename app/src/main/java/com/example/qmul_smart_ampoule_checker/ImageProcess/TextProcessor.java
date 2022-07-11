@@ -20,7 +20,7 @@ import java.util.List;
 public class TextProcessor extends ProcessorBase<Text> {
 
     private static final int IMAGE_BOUNDARY_THRESHOLD = 200;
-    private static final int READING_COUNTER_MARGIN = 50;
+    private static final int READING_COUNTER_MARGIN = 20;
 
     private final TextRecognizer textRecognizer;
 
