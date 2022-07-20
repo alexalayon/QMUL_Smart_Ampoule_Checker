@@ -4,7 +4,10 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="..\:/Dissertation/QMUL_Smart_Ampoule_Checker/app/src/main/res/layout/activity_camera.xml" value="0.12360688956433637" />
+        <entry key="..\:/Dissertation/QMUL_Smart_Ampoule_Checker/app/src/main/res/layout/activity_main.xml" value="0.1" />
         <entry key="..\:/Dissertation/QMUL_Smart_Ampoule_Checker/app/src/main/res/layout/activity_output.xml" value="0.25416666666666665" />
+        <entry key="..\:/Dissertation/QMUL_Smart_Ampoule_Checker/app/src/main/res/layout/activity_settings.xml" value="0.264" />
+        <entry key="..\:/Dissertation/QMUL_Smart_Ampoule_Checker/app/src/main/res/layout/settings_style.xml" value="0.12360688956433637" />
       </map>
     </option>
   </component>

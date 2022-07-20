@@ -1,6 +1,7 @@
 package com.example.qmul_smart_ampoule_checker;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -8,15 +9,25 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Parcelable;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERMISSION_CODE = 100;
     private Button startButton, settingsButton;
+
+    public static SettingsActivity.Settings SettingsAudioValue;
+    private TextToSpeech textToSpeech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,6 +35,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         startButton = findViewById(R.id.Start_button);
+        settingsButton = findViewById(R.id.Settings_button);
+
+        textToSpeech = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @RequiresApi(api = Build.VERSION_CODES.N)
+            @Override
+            public void onInit(int status) {
+                Voice voiceDefault = textToSpeech.getDefaultVoice();
+                SettingsAudioValue = new SettingsActivity.Settings(voiceDefault.getLocale(), voiceDefault.getName(), 1.0f, 1.0f, textToSpeech.getVoices()
+                .stream().filter(v -> v.getLocale().equals(Locale.UK) && v.isNetworkConnectionRequired() == false).collect(Collectors.toList()));
+            }
+        });
 
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -36,6 +58,23 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent settingsIntent = new Intent(MainActivity.this, SettingsActivity.class);
+                startActivity(settingsIntent);
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
     }
 
     private boolean isCameraPermissionGranted() {
@@ -49,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void startCameraActivity() {
         Intent startIntent = new Intent(MainActivity.this, CameraActivity.class);
+        textToSpeech.stop();
         startActivity(startIntent);
     }
 

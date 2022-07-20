@@ -19,7 +19,7 @@ import java.util.List;
 
 public class TextProcessor extends ProcessorBase<Text> {
 
-    private static final int IMAGE_BOUNDARY_THRESHOLD = 200;
+    private static final int IMAGE_BOUNDARY_THRESHOLD = 100;
     private static final int READING_COUNTER_MARGIN = 20;
 
     private final TextRecognizer textRecognizer;
@@ -32,7 +32,6 @@ public class TextProcessor extends ProcessorBase<Text> {
     private boolean ampouleExpiryDateCheck = false;
 
     private int maxHeight;
-    private int maxWidth;
 
     private String ampouleName = "";
     private String ampouleConcentrationWeight;
@@ -55,7 +54,6 @@ public class TextProcessor extends ProcessorBase<Text> {
         hasReadAllRelevantText = false;
         textNotDetectedFlag = false;
         dataIncompleteFlat = false;
-        maxWidth = 0;
         maxHeight = 0;
     }
 
@@ -79,8 +77,8 @@ public class TextProcessor extends ProcessorBase<Text> {
         reading_counter++;
         if (ampouleConcentrationWeightCheck && ampouleConcentrationVolumeCheck
                 && ampouleExpiryDateCheck && ampouleNameCheck) {
-            ampouleLabelRelevantText = ampouleName + "\n"
-            + ampouleConcentrationWeight + " in " + ampouleConcentrationVolume + "\n"
+            ampouleLabelRelevantText = ampouleName + ".\n"
+            + ampouleConcentrationWeight + " in " + ampouleConcentrationVolume + ".\n"
             + "Expiry Date: " + ampouleExpiryDate;
             hasReadAllRelevantText = true;
         } else if (reading_counter >= READING_COUNTER_MARGIN) {
@@ -286,7 +284,7 @@ public class TextProcessor extends ProcessorBase<Text> {
                         continue;
                     }
 
-                    if (maxHeight < line.getBoundingBox().height() && maxWidth < line.getBoundingBox().width()) {
+                    if (maxHeight < line.getBoundingBox().height()) {
                         String[] nameTrim = line.getText().split(" ");
                         boolean correctName = true;
                         for (String nameWord : nameTrim) {
@@ -298,7 +296,6 @@ public class TextProcessor extends ProcessorBase<Text> {
 
                         if (correctName && line.getText().replaceAll(" ", "").matches("[A-Za-z]+")) {
                             maxHeight = line.getBoundingBox().height();
-                            maxWidth = line.getBoundingBox().width();
                             name = line.getText();
                         }
                     }

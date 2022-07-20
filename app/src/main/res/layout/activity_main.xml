@@ -39,4 +39,12 @@
         android:layout_marginTop="100dp"
         />
 
+    <Button
+        android:id="@+id/Settings_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Audio Settings"
+        android:layout_marginTop="20dp"
+        />
+
 </LinearLayout>

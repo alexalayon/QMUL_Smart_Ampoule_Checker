@@ -17,6 +17,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.QMUL_Smart_Ampoule_Checker">
         <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+        <activity
             android:name=".CameraActivity"
             android:exported="false" />
         <activity

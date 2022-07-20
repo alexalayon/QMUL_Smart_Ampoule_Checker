@@ -1,6 +1,7 @@
 package com.example.qmul_smart_ampoule_checker;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
@@ -12,8 +13,10 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.MutableLiveData;
 
 import android.content.DialogInterface;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import android.widget.Toast;
 
 import com.example.qmul_smart_ampoule_checker.ImageProcess.ImageProcessor;
@@ -29,6 +32,8 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CameraActivity extends AppCompatActivity {
 
@@ -62,10 +67,11 @@ public class CameraActivity extends AppCompatActivity {
         cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
 
         textToSpeech = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @RequiresApi(api = Build.VERSION_CODES.N)
             @Override
             public void onInit(int status) {
                 if (status == TextToSpeech.SUCCESS) {
-                    textToSpeech.setLanguage(Locale.ENGLISH);
+                    SetAudioSettings();
                 }
             }
         });
@@ -98,7 +104,10 @@ public class CameraActivity extends AppCompatActivity {
             imageProcessor.stop();
         }
 
-        textToSpeech.shutdown();
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
     }
 
     private void startCameraLiveData() {
@@ -241,8 +250,6 @@ public class CameraActivity extends AppCompatActivity {
             cameraProvider.unbind(imageAnalysisProcess);
         }
 
-        textToSpeech.setPitch(1.0f);
-        textToSpeech.setSpeechRate(1.0f);
         textToSpeech.speak(labelText, TextToSpeech.QUEUE_FLUSH, null);
 
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
@@ -256,5 +263,31 @@ public class CameraActivity extends AppCompatActivity {
                         bindCamera();
                     }
                 }).show();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void SetAudioSettings() {
+        if (MainActivity.SettingsAudioValue != null) {
+            Voice settingsVoice = null;
+            List<Voice> voiceList = textToSpeech.getVoices().stream().filter(v -> v.getLocale().equals(Locale.UK) && v.isNetworkConnectionRequired() == false).collect(Collectors.toList());
+            for (Voice voice: voiceList) {
+                if (voice.getName().equals(MainActivity.SettingsAudioValue.voiceName)) {
+                    settingsVoice = voice;
+                    break;
+                }
+            }
+
+            textToSpeech.setLanguage(settingsVoice.getLocale());
+            textToSpeech.setVoice(settingsVoice);
+            textToSpeech.setPitch(MainActivity.SettingsAudioValue.pitch);
+            textToSpeech.setSpeechRate(MainActivity.SettingsAudioValue.speechRate);
+        }
+        else {
+            textToSpeech.setLanguage(Locale.UK);
+            textToSpeech.setPitch(1.0f);
+            textToSpeech.setSpeechRate(1.0f);
+        }
+
+        textToSpeech.speak("", TextToSpeech.QUEUE_FLUSH, null);
     }
 }
