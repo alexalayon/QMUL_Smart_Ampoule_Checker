@@ -59,14 +59,6 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         saveButton = findViewById(R.id.save_button);
 
         voiceListSet = MainActivity.SettingsAudioValue.voiceList;
-        List<Voice> voicelist = MainActivity.SettingsAudioValue.voiceList.stream().filter(v -> v.getName().equals(MainActivity.SettingsAudioValue.voiceName)).collect(Collectors.toList());
-        if (voicelist.size() > 0) {
-            voice = voicelist.get(0);
-        } else {
-            voice = MainActivity.SettingsAudioValue.voiceList.get(0);
-        }
-        pitchSeekBar.setProgress((int)(MainActivity.SettingsAudioValue.pitch * 50));
-        speechRateSeekBar.setProgress((int)(MainActivity.SettingsAudioValue.speechRate * 50));
 
         Spinner voiceListSpinner = findViewById(R.id.voiceList_spinner);
         List<String> spinnerOptions = new ArrayList<>();
@@ -78,6 +70,16 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         voiceListSpinner.setAdapter(arrayAdapter);
         voiceListSpinner.setOnItemSelectedListener(this);
 
+        List<Voice> voicelist = voiceListSet.stream().filter(v -> v.getName().equals(MainActivity.SettingsAudioValue.voiceName)).collect(Collectors.toList());
+        if (voicelist.size() > 0) {
+            voice = voicelist.get(0);
+        } else {
+            voice = voiceListSet.get(0);
+        }
+        voiceListSpinner.setSelection(voiceListSet.indexOf(voice));
+
+        pitchSeekBar.setProgress((int)(MainActivity.SettingsAudioValue.pitch * 50));
+        speechRateSeekBar.setProgress((int)(MainActivity.SettingsAudioValue.speechRate * 50));
 
         testButton.setOnClickListener(new View.OnClickListener() {
             @Override

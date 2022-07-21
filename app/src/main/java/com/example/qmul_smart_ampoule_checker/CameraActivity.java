@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.example.qmul_smart_ampoule_checker.ImageProcess.ImageProcessor;
@@ -36,6 +37,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class CameraActivity extends AppCompatActivity {
+    private static final String CAMERA_TAG_LOG = "Camera Process";
 
     private static final int MAX_OBJECT_LABEL_COUNT = 1;
     private static final String OBJECT_CLASSIFICATION_MODEL_FILE = "ampoule_model.tflite";
@@ -62,6 +64,7 @@ public class CameraActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
+        Log.i(CAMERA_TAG_LOG, "Camera Application Start");
 
         cameraView = findViewById(R.id.camera_previewView);
         cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
@@ -170,6 +173,8 @@ public class CameraActivity extends AppCompatActivity {
             imageProcessor.stop();
         }
 
+        Log.i(CAMERA_TAG_LOG, "Object Detection process Start");
+
         try {
             LocalModel localModel = new LocalModel.Builder().setAssetFilePath(OBJECT_CLASSIFICATION_MODEL_FILE).build();
             CustomObjectDetectorOptions.Builder objectDetectorBuilder = new CustomObjectDetectorOptions.Builder(localModel).setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE);
@@ -181,6 +186,7 @@ public class CameraActivity extends AppCompatActivity {
 
             imageProcessor = new ObjectProcessor(this, objectDetectorOptions, labels);
         } catch (Exception ex) {
+            Log.e(CAMERA_TAG_LOG, "Can not create image processor: ", ex);
             Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
         }
 
@@ -195,6 +201,7 @@ public class CameraActivity extends AppCompatActivity {
                     bindTextRecognition(ObjectProcessor.getResults());
                 }
             } catch (MlKitException ex) {
+                Log.e(CAMERA_TAG_LOG, "Failed to process image. Error: " + ex);
                 Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -210,9 +217,12 @@ public class CameraActivity extends AppCompatActivity {
             imageProcessor.stop();
         }
 
+        Log.i(CAMERA_TAG_LOG, "Text Recognition process Start");
+
         try {
             imageProcessor = new TextProcessor(this, new TextRecognizerOptions.Builder().build(), objectResults);
         } catch (Exception ex) {
+            Log.e(CAMERA_TAG_LOG, "Can not create image processor: ", ex);
             Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
             return;
         }
@@ -228,10 +238,12 @@ public class CameraActivity extends AppCompatActivity {
                 } else if (TextProcessor.getTextNotDetectedFlag()) {
                     imageProcessor.stop();
                     Toast.makeText(this, "Text not detected", Toast.LENGTH_SHORT).show();
+                    Log.i(CAMERA_TAG_LOG, "Text not detected");
                     bindDetectionProcess();
                 } else if (TextProcessor.getTextDataIncompleteFlag()) {
                     imageProcessor.stop();
                     Toast.makeText(this, "The data is incomplete", Toast.LENGTH_SHORT).show();
+                    Log.i(CAMERA_TAG_LOG, "Data is incomplete");
                     labelSetOutput(TextProcessor.getAmpouleLabelRelevantText());
                 }
             } catch (MlKitException ex) {
@@ -256,13 +268,21 @@ public class CameraActivity extends AppCompatActivity {
         dialogBuilder.setTitle("Label data")
                 .setMessage(labelText)
                 .setCancelable(false)
-                .setPositiveButton("Next", new DialogInterface.OnClickListener() {
+                .setPositiveButton("Correct", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.cancel();
                         bindCamera();
+                        Log.i(CAMERA_TAG_LOG, "Output process \t" + labelText.replaceAll("\n", "\t") + "\t Correct");
                     }
-                }).show();
+                }).setNegativeButton("Wrong", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+                bindCamera();
+                Log.i(CAMERA_TAG_LOG, "Output process \t" + labelText.replaceAll("\n", "\t") + "\t Wrong");
+            }
+        }).show();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -276,11 +296,16 @@ public class CameraActivity extends AppCompatActivity {
                     break;
                 }
             }
-
-            textToSpeech.setLanguage(settingsVoice.getLocale());
-            textToSpeech.setVoice(settingsVoice);
-            textToSpeech.setPitch(MainActivity.SettingsAudioValue.pitch);
-            textToSpeech.setSpeechRate(MainActivity.SettingsAudioValue.speechRate);
+            if (settingsVoice != null) {
+                textToSpeech.setLanguage(settingsVoice.getLocale());
+                textToSpeech.setVoice(settingsVoice);
+                textToSpeech.setPitch(MainActivity.SettingsAudioValue.pitch);
+                textToSpeech.setSpeechRate(MainActivity.SettingsAudioValue.speechRate);
+            } else {
+                textToSpeech.setLanguage(Locale.UK);
+                textToSpeech.setPitch(1.0f);
+                textToSpeech.setSpeechRate(1.0f);
+            }
         }
         else {
             textToSpeech.setLanguage(Locale.UK);
